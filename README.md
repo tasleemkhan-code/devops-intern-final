@@ -4,9 +4,8 @@
 **Date:** August 17, 2026
 **Description:** A small but complete DevOps pipeline built with open-source tools — from a simple Python script, through containerization, CI/CD automation, job orchestration with Nomad, and log monitoring with Grafana Loki. Each step's output feeds into the next, simulating a realistic (if scaled-down) DevOps workflow.
 
-![CI](https://github.com/<your-username>/devops-intern-final/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/tasleemkhan-code/devops-intern-final/actions/workflows/ci.yml/badge.svg)
 
-> Replace `<your-username>` above and throughout this README with your actual GitHub username once the repo is pushed, so the badge and links resolve correctly.
 
 ---
 
