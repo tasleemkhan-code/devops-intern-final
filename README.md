@@ -175,10 +175,10 @@ in their step's folder.
 
 | Step | Verified by running | Screenshot / evidence |
 |------|---------------------|------------------------|
-| 3 — Docker | `docker build` + `docker run`, output was `Hello, DevOps!` | `docker_run_output.png` |
+| 3 — Docker | `docker build` + `docker run`, output was `Hello, DevOps!` (also visible at bottom of nomad_status.png) | `nomad_status.png` |
 | 4 — CI/CD | Pushed to `main`, checked Actions tab for a green run | `ci_run_success.png` |
-| 5 — Nomad | `nomad job run nomad/hello.nomad` + `nomad job status hello` | `nomad_status.png` |
-| 6 — Loki | `docker compose -f docker-compose.monitoring.yml up`, confirmed log lines in Grafana Explore | `monitoring/loki_screenshot.png` |
+| 5 — Nomad | `nomad job run nomad/hello.nomad` + `nomad job status hello`, confirmed one allocation `running` after switching to the `raw_exec` driver (see note in `nomad/hello.nomad`) | `nomad_status.png` |
+| 6 — Loki | `docker compose -f docker-compose.monitoring.yml up`, confirmed 33+ log lines streaming into Grafana Explore via Promtail | `loki_screenshot.png` |
 
 *(Fill in this table with actual filenames once each screenshot is taken and committed.)*
 
