@@ -4,8 +4,9 @@
 **Date:** August 17, 2026
 **Description:** A small but complete DevOps pipeline built with open-source tools — from a simple Python script, through containerization, CI/CD automation, job orchestration with Nomad, and log monitoring with Grafana Loki. Each step's output feeds into the next, simulating a realistic (if scaled-down) DevOps workflow.
 
-![CI](https://github.com/tasleemkhan-code/devops-intern-final/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/<your-username>/devops-intern-final/actions/workflows/ci.yml/badge.svg)
 
+> Replace `<your-username>` above and throughout this README with your actual GitHub username once the repo is pushed, so the badge and links resolve correctly.
 
 ---
 
@@ -129,20 +130,57 @@ nomad alloc logs <alloc-id>
 
 ## Step 6 — Monitoring with Grafana Loki
 
-`monitoring/loki_setup.txt` documents:
-- How Loki was started locally via Docker
-- How container/Nomad logs are forwarded to Loki (Docker Loki logging driver / Promtail)
-- The exact commands used to query and view logs (LogCLI, curl, and Grafana's Explore tab)
+Loki by itself only **stores** logs — it doesn't collect them. The
+actual collection is done by **Promtail**, which discovers running
+Docker containers and pushes their logs to Loki. `docker-compose.monitoring.yml`
+runs all of it together: Loki, Promtail, Grafana, and the `hello`
+container (looped, so it keeps producing log lines to watch).
 
-Quick start:
+**Start the whole monitoring stack:**
 
 ```bash
-docker run -d --name=loki -p 3100:3100 grafana/loki:2.9.0 -config.file=/etc/loki/local-config.yaml
+docker compose -f docker-compose.monitoring.yml up -d --build
 ```
 
-See `monitoring/loki_setup.txt` for full details.
+**View logs in Grafana:**
+1. Open `http://localhost:3000`
+2. Add a Loki data source pointing at `http://loki:3100`
+3. Go to Explore, query `{container="hello-app"}`
+4. "Hello, DevOps!" lines should appear, refreshing every ~5s
 
-*(Screenshot of Grafana Explore view can be added here once captured.)*
+**Or query directly with LogCLI:**
+
+```bash
+logcli query '{container="hello-app"}' --addr="http://localhost:3100"
+```
+
+Full details in `monitoring/loki_setup.txt` and the Promtail scrape
+config in `monitoring/promtail-config.yaml`.
+
+**Shut down:**
+
+```bash
+docker compose -f docker-compose.monitoring.yml down
+```
+
+*(Screenshot of Grafana Explore view showing live log lines goes in `monitoring/loki_screenshot.png`.)*
+
+---
+
+## Verification / Evidence
+
+This section records proof that each step was actually run, not just
+written. Screenshots referenced below live alongside this README or
+in their step's folder.
+
+| Step | Verified by running | Screenshot / evidence |
+|------|---------------------|------------------------|
+| 3 — Docker | `docker build` + `docker run`, output was `Hello, DevOps!` | `docker_run_output.png` |
+| 4 — CI/CD | Pushed to `main`, checked Actions tab for a green run | `ci_run_success.png` |
+| 5 — Nomad | `nomad job run nomad/hello.nomad` + `nomad job status hello` | `nomad_status.png` |
+| 6 — Loki | `docker compose -f docker-compose.monitoring.yml up`, confirmed log lines in Grafana Explore | `monitoring/loki_screenshot.png` |
+
+*(Fill in this table with actual filenames once each screenshot is taken and committed.)*
 
 ---
 

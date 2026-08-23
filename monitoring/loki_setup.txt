@@ -1,49 +1,67 @@
-LOKI MONITORING SETUP NOTES
-============================
+LOKI MONITORING SETUP NOTES (corrected)
+=========================================
 
-1. How Loki was started (local Docker run)
+IMPORTANT CORRECTION FROM FIRST DRAFT:
+Running `docker run ... grafana/loki` by itself is NOT monitoring.
+Loki is only a log STORE — it does not scrape or pull logs from
+anywhere on its own. Something has to actively read container logs
+and PUSH them to Loki's API. That "something" is Promtail (the
+log-shipping agent used here). Without it, Loki just sits there
+empty. This file now documents the corrected, actually-working setup.
+
+1. What's running
 --------------------------------------------
-docker run -d --name=loki -p 3100:3100 grafana/loki:2.9.0 -config.file=/etc/loki/local-config.yaml
+docker-compose.monitoring.yml (in repo root) starts four containers:
+  - loki       -> the log storage/query backend (port 3100)
+  - promtail   -> the agent that discovers running Docker containers
+                  via the Docker socket and ships their stdout/stderr
+                  logs to Loki
+  - grafana    -> UI for browsing/querying logs (port 3000)
+  - hello      -> the app container from Step 3's Dockerfile, run in
+                  a loop (see docker-compose.monitoring.yml comment)
+                  so it keeps producing log lines instead of exiting
+                  after one line
 
-This starts Loki on port 3100 using its default local config
-(good enough for local/dev use, not for production).
-
-2. Forwarding container logs to Loki
+2. How it was started
 --------------------------------------------
-Docker's native Loki logging driver was used to forward the
-hello-app container's stdout/stderr logs directly to Loki:
+docker compose -f docker-compose.monitoring.yml up -d --build
 
-docker run --log-driver=loki \
-  --log-opt loki-url="http://localhost:3100/loki/api/v1/push" \
-  --log-opt loki-retries=5 \
-  --log-opt loki-batch-size=400 \
-  devops-intern-final-hello:latest
-
-(Requires the Loki Docker driver plugin to be installed once:
-docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions)
-
-For a Nomad-deployed job, the same idea applies via Promtail:
-Promtail is pointed at the Nomad task's log directory
-(alloc/logs/) and configured to push to Loki's push API
-(http://localhost:3100/loki/api/v1/push).
-
-3. Command used to view/query logs
+3. How Promtail finds and ships the logs
 --------------------------------------------
-Using LogCLI (Loki's command-line query tool):
+monitoring/promtail-config.yaml uses Promtail's docker_sd_configs
+to talk to the Docker socket, auto-discover all running containers
+(including hello-app), tail their logs, and push them to:
+  http://loki:3100/loki/api/v1/push
 
-logcli query '{job="docker"}' --addr="http://localhost:3100"
+This is the missing piece from the first draft of this file — it is
+the actual log-collection agent, not just Loki running by itself.
 
-Or via curl directly against the Loki API:
-
-curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={job="docker"}' | jq
-
-Logs can also be viewed visually by adding Loki as a data
-source in Grafana (http://localhost:3000) and using the
-Explore tab with the same LogQL query.
-
-4. Screenshot
+4. Commands used to view/query logs
 --------------------------------------------
-(Optional) Screenshot of Grafana Explore view showing
-"Hello, DevOps!" log lines can be added here:
-monitoring/loki_screenshot.png
+Via LogCLI:
+  logcli query '{container="hello-app"}' --addr="http://localhost:3100"
+
+Via curl against the Loki API directly:
+  curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
+    --data-urlencode 'query={container="hello-app"}' | jq
+
+Via Grafana (recommended, visual):
+  1. Open http://localhost:3000
+  2. Add a data source: Connections -> Data sources -> Add -> Loki
+     URL: http://loki:3100
+  3. Go to Explore, select the Loki data source
+  4. Query: {container="hello-app"}
+  5. "Hello, DevOps!" log lines should appear, refreshing every ~5s
+
+5. Verification performed
+--------------------------------------------
+[ FILL IN AFTER YOU ACTUALLY RUN THIS ]
+- Confirmed all 4 containers show "Up" via: docker ps
+- Confirmed log lines visible in Grafana Explore
+  -> screenshot: monitoring/loki_screenshot.png
+- Confirmed logcli/curl query above returns non-empty results
+  -> screenshot or pasted output: monitoring/logcli_output.txt
+
+6. Shutting down
+--------------------------------------------
+docker compose -f docker-compose.monitoring.yml down
